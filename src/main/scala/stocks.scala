@@ -1,6 +1,6 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, column, count, desc, expr, lag, lead, mean, round, sqrt, stddev, stddev_pop, stddev_samp, window, year}
-import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.{col, count, lag, round, sqrt, stddev, year}
+import org.apache.log4j._
 
 object stocks extends App {
 
@@ -8,7 +8,7 @@ object stocks extends App {
   // Assignment Objectives
   // The file stock_prices.csv contains the daily closing price of a few stocks on the NYSE/NASDAQ
 
-  import org.apache.log4j._
+
   Logger.getLogger("org").setLevel(Level.ERROR)
 
   val FPath="./src/resources/stock_prices.csv"
@@ -32,11 +32,11 @@ object stocks extends App {
   newDf.show()
 
   val dailyReturn = newDf.groupBy("date")
-    .avg("daily_return %")
+                         .avg("daily_return %")
 
   val dailyFormated =  dailyReturn.select(col("date"),round(col("avg(daily_return %)"),2)
-    .as("avg_daily_return %"))
-    .orderBy("date")
+                                  .as("avg_daily_return %"))
+                                  .orderBy("date")
 
   dailyFormated.show()
 
@@ -51,8 +51,8 @@ object stocks extends App {
   val avgFreqDf = frequentDf.groupBy("ticker").avg("freq_trade_million")
 
   val mostFrequentlyTradedDf = avgFreqDf.select(col("ticker"),round(col("avg(freq_trade_million)"),2).as("traded most frequently, AVG_millions"))
-    .orderBy(col("traded most frequently, AVG_millions").desc)
-    .show(1)
+                                        .orderBy(col("traded most frequently, AVG_millions").desc)
+                                        .show(1)
 
   // Bonus Question
   // Which stock was the most volatile as measured by annualized standard deviation of daily returns?
