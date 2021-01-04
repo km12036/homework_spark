@@ -1,5 +1,5 @@
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, column, desc, expr, lag, lead, mean, round, stddev, stddev_pop, stddev_samp, window}
+import org.apache.spark.sql.functions.{col, column, count, desc, expr, lag, lead, mean, round, sqrt, stddev, stddev_pop, stddev_samp, window, year}
 import org.apache.spark.sql.expressions.Window
 
 object stocks extends App {
@@ -26,20 +26,17 @@ object stocks extends App {
   val leadDf = df.withColumn("previous_close_data", lag("close", 1, 0).over(w))
   leadDf.show()
 
+  //Daily return=((close today - close yesterday)/close yesterday)*100
   val newDf = leadDf.withColumn("daily_return %",round((col("close")-col("previous_close_data"))/col("previous_close_data")*100,2))
-    .na.drop()
+                     .na.drop()
   newDf.show()
-
-
 
   val dailyReturn = newDf.groupBy("date")
     .avg("daily_return %")
 
-
   val dailyFormated =  dailyReturn.select(col("date"),round(col("avg(daily_return %)"),2)
     .as("avg_daily_return %"))
     .orderBy("date")
-
 
   dailyFormated.show()
 
@@ -60,12 +57,24 @@ object stocks extends App {
   // Bonus Question
   // Which stock was the most volatile as measured by annualized standard deviation of daily returns?
 
-  val stdev_df =  newDf.groupBy("ticker")
-    .agg(stddev("daily_return %"))
 
-  //standard deviation will return a low value that indicates low volatility
+ // val stdev_df =  newDf.groupBy("ticker")
+  //  .agg(stddev("daily_return %"))
 
-  stdev_df.select(col("ticker"),round(col("stddev_samp(daily_return %)"),2).as("st_dev of daily return"))
-    .orderBy(col("stddev_samp(daily_return %)").desc)
-    .show()
+  //stdev_df.select(col("ticker"),round(col("stddev_samp(daily_return %)"),2).as("st_dev of daily return"))
+  //  .orderBy(col("stddev_samp(daily_return %)").desc)
+  // .show()
+
+
+  //Annualized-yearly Standard Deviation = Standard Deviation of Daily Returns * Square Root of (trade_days)
+  val yearCol= newDf.withColumn("year",year(col("date")))
+  val groupedDf = yearCol.select(col("ticker"),col("year"),col("daily_return %"),col("date"))
+                          .groupBy("ticker","year")
+                          .agg(stddev("daily_return %"),count("date"))
+
+  val vol= groupedDf.withColumn("volatility_%",col("stddev_samp(daily_return %)")*sqrt(col("count(date)")))
+  val volDf= vol.select(col("ticker"),col("year"),round(col("volatility_%"),2).as("volatility %"))
+  volDf.show()
+
+  volDf.orderBy(col("volatility %").desc).show(1)
 }
